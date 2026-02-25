@@ -1,108 +1,121 @@
-# 💻 Medium-Level SQL Injection Defense Analysis  
+# 💻 DVWA Medium-Level SQL Injection Assessment  
 
-**Web Application Security Assessment – SQL Injection Bypass**
+**Controlled Security Review – Web Application Penetration Testing**  
 
 ---
 
 ## 📌 Project Overview
 
-This project demonstrates a hands-on security assessment of a web application implementing **medium-level defenses against SQL injection**. The focus was to analyze why common SQL injection payloads fail and identify logical vulnerabilities that still allow attackers to bypass input filtering.
+This project documents a hands-on security assessment of **Damn Vulnerable Web Application (DVWA)** at the **Medium security level**, conducted in a controlled lab environment. The goal was to evaluate whether DVWA’s medium-level defenses against SQL injection were effective and to demonstrate techniques for exploiting residual vulnerabilities.
 
-Objectives:
+**Key Outcome:**  
+Despite input escaping, POST-only requests, and dropdown input controls, SQL injection was successfully executed, allowing extraction of sensitive data such as user credentials and password hashes.  
 
-- Evaluate effectiveness of medium-level defenses  
-- Test numeric and string input handling  
-- Demonstrate bypass techniques using boolean-based and UNION-based SQL injection  
-- Highlight proper secure coding practices and mitigation strategies  
-
-All testing was performed in a controlled lab environment using simulated accounts and test data.
+- **CVSS 3.1 Score:** 9.8 (Critical)  
+- **OWASP Category:** A03:2021 – Injection  
+- **Authorization:** AltSchool Africa Internal Training  
+- **Testing Date:** February 2, 2026  
 
 ---
 
-## 🏗 Environment & Defenses Tested
+## 🏗 Lab Environment
 
-| Security Level | Defenses Introduced |
-|----------------|------------------|
-| Medium | - Input escaping using `mysql_real_escape_string()`<br>- POST requests only (prevents URL manipulation)<br>- Dropdown input control limiting user IDs (1–5) |
+| Component | Details |
+|-----------|---------|
+| Target Application | DVWA (Medium security) |
+| Platform | Kali Linux VM (isolated lab) |
+| Module Tested | SQL Injection |
+| Database Connection | Verified functional |
+| Exploitation Tool | Manual HTTP requests, browser, Burp Suite (for observation) |
 
-**Key Observation:**  
-While basic SQL injection payloads (e.g., `' OR '1'='1`) were blocked by escaping, the numeric input context remained vulnerable.
+---
+
+## 🔹 Medium-Level Defense Analysis
+
+**Defenses Introduced at Medium Level**:
+
+1. **Input Escaping** – `mysql_real_escape_string()` prevents quote-based payloads.  
+2. **POST Requests Only** – URL manipulation is blocked.  
+3. **Dropdown Input Control** – Limits user IDs visible on the client side (1–5).  
+
+**Why Basic SQL Injection Fails:**  
+- Classic payloads like `' OR '1'='1` fail due to quote escaping.  
+
+**Critical Developer Mistake:**  
+- User input is directly concatenated into numeric SQL queries without type validation.  
+- Escaping is ineffective against numeric boolean-based expressions.  
 
 ---
 
 ## 🔹 Exploitation & Discovery
 
-### 1️⃣ Failed Attempt (Expected)
+**Failed Attempt (Expected):**
 ```sql
 Payload: 1' OR '1'='1
-Result: Blocked by escaping quotes
+Result: Blocked by escaping
 ```
 
-### 2️⃣ Successful Bypass
+**Successful Bypass (Key Insight):**
 ```sql
 Payload: 1 OR 1
 Result: All user records returned
 ```
 
-**Insights:**
+**Explanation:**  
+- Input treated as a number, not a string  
+- Escaping ineffective in numeric context  
+- Client-side dropdown controls bypassed easily  
 
-- Numeric inputs were not validated or type-checked  
-- Escaping is ineffective in numeric contexts  
-- Client-side controls (dropdown) are easily bypassed  
-- Boolean-based SQL logic injection works without special characters  
-
----
-
-## 🔹 Data Extraction
-
-- **Column count determined using UNION injection**  
-- **Database content retrieved via controlled SELECT statements**  
-- Extracted sensitive information:
+**Data Extraction via UNION Injection:**  
+- Column count determined using UNION injection  
+- Controlled SELECT statements extracted sensitive data:  
   - 5 user accounts  
-  - Administrator account credentials (hashed passwords)  
+  - Administrator account credentials (hashed)  
 
 📸 Evidence: UNION-based data extraction output
 
 ---
 
-## ⚠ Impact Assessment
+## ⚠ Evidence & Impact
 
+**Compromised Data:**  
 - Full read access to the `users` table  
-- Exposure of all user credentials  
 - Administrator account compromised  
-- Weak defenses mislead developers into a false sense of security  
+- Password hashes available for offline cracking  
+
+**Reason for Bypass:**  
+- Numeric input not validated  
+- Escaping ineffective for logical expressions  
+- Client-side controls insufficient for security  
 
 ---
 
 ## 🔹 Defense & Remediation
 
-### Why Medium Protection is Insufficient
+**Why Medium Protection Is Insufficient:**  
+- Relies on input filtering rather than secure design  
+- Fails to separate SQL code from user input  
+- No use of prepared statements or parameterized queries  
 
-- Relies solely on input escaping  
-- Concatenates user input directly into SQL queries  
-- Fails to separate SQL code from user data  
-- Trusts client-side controls  
-
-### Coding Mistake Example
+**Exact Coding Mistake:**
 ```php
 $query = "SELECT first_name, last_name FROM users WHERE user_id = $id";
 ```
 
-### Recommended Best Practices
-
+**Recommended Best Practices:**  
 - Use **prepared statements** and **parameterized queries**  
-- Enforce strict **server-side input validation**  
-- Never rely on client-side controls for security  
-- Use modern password hashing (e.g., **Argon2id**) instead of MD5  
-- Adopt secure coding design from the start  
+- Enforce **strict server-side input validation**  
+- Never trust **client-side controls**  
+- Replace MD5 password hashing with **Argon2id**  
+- Secure design from the start is essential  
 
 ---
 
 ## 🔹 Key Lessons Learned
 
-- Escaping input is **not sufficient** to prevent SQL injection  
-- Numeric input can bypass escaping if type validation is missing  
-- Proper mitigation requires **secure design, parameterized queries, and server-side enforcement**  
+- Escaping input alone is **insufficient** against SQL injection  
+- Numeric input may bypass string-based defenses  
+- Secure design, parameterized queries, and server-side validation are critical to application security  
 
 ---
 
@@ -110,7 +123,7 @@ $query = "SELECT first_name, last_name FROM users WHERE user_id = $id";
 
 - Web application penetration testing  
 - SQL injection analysis (boolean-based, UNION-based)  
-- Input validation and numeric context evaluation  
+- Input validation evaluation  
 - Secure coding recommendations  
 - Academic and corporate-style security reporting  
 
