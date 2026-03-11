@@ -1,134 +1,165 @@
-# 💻 DVWA Medium-Level SQL Injection Assessment  
+<div align="center">
 
-**Controlled Security Review – Web Application Penetration Testing**  
+# 💉 DVWA Medium-Level SQL Injection Assessment
+
+![Type](https://img.shields.io/badge/Type-Web%20App%20Pentest-red?style=for-the-badge)
+![CVSS](https://img.shields.io/badge/CVSS%203.1-9.8%20Critical-critical?style=for-the-badge)
+![OWASP](https://img.shields.io/badge/OWASP-A03%3A2021%20Injection-orange?style=for-the-badge)
+![Auth](https://img.shields.io/badge/Authorization-AltSchool%20Africa-blue?style=for-the-badge)
+
+> A hands-on security assessment of DVWA at Medium security level, demonstrating that input escaping alone is insufficient to prevent SQL injection — resulting in full extraction of user credentials and password hashes.
+
+</div>
 
 ---
 
 ## 📌 Project Overview
 
-This project documents a hands-on security assessment of **Damn Vulnerable Web Application (DVWA)** at the **Medium security level**, conducted in a controlled lab environment. The goal was to evaluate whether DVWA’s medium-level defenses against SQL injection were effective and to demonstrate techniques for exploiting residual vulnerabilities.
+This project documents a controlled penetration test of **Damn Vulnerable Web Application (DVWA)** at the **Medium security level**. The goal was to evaluate whether DVWA's medium-level defenses against SQL injection were effective and to demonstrate techniques for exploiting residual vulnerabilities.
 
-**Key Outcome:**  
-Despite input escaping, POST-only requests, and dropdown input controls, SQL injection was successfully executed, allowing extraction of sensitive data such as user credentials and password hashes.  
+**Key Outcome:** Despite input escaping, POST-only requests, and dropdown input controls, SQL injection was successfully executed — allowing full extraction of user credentials and password hashes.
 
-- **CVSS 3.1 Score:** 9.8 (Critical)  
-- **OWASP Category:** A03:2021 – Injection  
-- **Authorization:** AltSchool Africa Internal Training  
-- **Testing Date:** February 2, 2026  
+| Field | Details |
+|---|---|
+| **CVSS 3.1 Score** | 9.8 — Critical |
+| **OWASP Category** | A03:2021 – Injection |
+| **Authorization** | AltSchool Africa Internal Training |
+| **Testing Date** | February 2, 2026 |
+| **Tester** | sekere01 |
 
 ---
 
-## 🏗 Lab Environment
+## 🏗️ Lab Environment
 
 | Component | Details |
-|-----------|---------|
-| Target Application | DVWA (Medium security) |
-| Platform | Kali Linux VM (isolated lab) |
-| Module Tested | SQL Injection |
-| Database Connection | Verified functional |
-| Exploitation Tool | Manual HTTP requests, browser, Burp Suite (for observation) |
+|---|---|
+| **Target Application** | DVWA (Medium security level) |
+| **Platform** | Kali Linux VM — fully isolated lab |
+| **Module Tested** | SQL Injection |
+| **Exploitation Method** | Manual HTTP requests, browser intercept |
+| **Observation Tool** | Burp Suite |
 
 ---
 
-## 🔹 Medium-Level Defense Analysis
+## 🛡️ Medium-Level Defense Analysis
 
-**Defenses Introduced at Medium Level**:
+DVWA's medium security level introduces three defenses:
 
-1. **Input Escaping** – `mysql_real_escape_string()` prevents quote-based payloads.  
-2. **POST Requests Only** – URL manipulation is blocked.  
-3. **Dropdown Input Control** – Limits user IDs visible on the client side (1–5).  
+| Defense | Implementation |
+|---|---|
+| Input Escaping | `mysql_real_escape_string()` — blocks quote-based payloads |
+| POST Requests Only | URL manipulation blocked |
+| Dropdown Input Control | Limits visible user IDs to 1–5 on the client side |
 
-**Why Basic SQL Injection Fails:**  
-- Classic payloads like `' OR '1'='1` fail due to quote escaping.  
-
-**Critical Developer Mistake:**  
-- User input is directly concatenated into numeric SQL queries without type validation.  
-- Escaping is ineffective against numeric boolean-based expressions.  
+**Why these defenses fail:**
+- Quote escaping is **ineffective against numeric boolean expressions**
+- User input is **directly concatenated** into SQL queries without type validation
+- Client-side dropdown controls are **trivially bypassed** via modified HTTP requests
 
 ---
 
-## 🔹 Exploitation & Discovery
+## 🔬 Exploitation & Discovery
 
-**Failed Attempt (Expected):**
+### Failed Attempt (Expected)
 ```sql
 Payload: 1' OR '1'='1
-Result: Blocked by escaping
+Result:  Blocked — quote escaping prevents string-based injection
 ```
 
-**Successful Bypass (Key Insight):**
+### Successful Bypass
 ```sql
-Payload: 1 OR 1
-Result: All user records returned
+Payload: 1 OR 1=1
+Result:  All user records returned
 ```
 
-**Explanation:**  
-- Input treated as a number, not a string  
-- Escaping ineffective in numeric context  
-- Client-side dropdown controls bypassed easily  
+**Why it works:** The input is treated as a numeric value, not a string. Escaping has no effect on logical expressions — the vulnerable query concatenates directly:
 
-**Data Extraction via UNION Injection:**  
-- Column count determined using UNION injection  
-- Controlled SELECT statements extracted sensitive data:  
-  - 5 user accounts  
-  - Administrator account credentials (hashed)  
-
-📸 Evidence: UNION-based data extraction output
-
----
-
-## ⚠ Evidence & Impact
-
-**Compromised Data:**  
-- Full read access to the `users` table  
-- Administrator account compromised  
-- Password hashes available for offline cracking  
-
-**Reason for Bypass:**  
-- Numeric input not validated  
-- Escaping ineffective for logical expressions  
-- Client-side controls insufficient for security  
-
----
-
-## 🔹 Defense & Remediation
-
-**Why Medium Protection Is Insufficient:**  
-- Relies on input filtering rather than secure design  
-- Fails to separate SQL code from user input  
-- No use of prepared statements or parameterized queries  
-
-**Exact Coding Mistake:**
 ```php
+// Vulnerable code
 $query = "SELECT first_name, last_name FROM users WHERE user_id = $id";
 ```
 
-**Recommended Best Practices:**  
-- Use **prepared statements** and **parameterized queries**  
-- Enforce **strict server-side input validation**  
-- Never trust **client-side controls**  
-- Replace MD5 password hashing with **Argon2id**  
-- Secure design from the start is essential  
+### Data Extraction via UNION Injection
+- Column count determined using `ORDER BY` and `UNION SELECT` probing
+- Controlled `SELECT` statements extracted:
+  - 5 user accounts
+  - Administrator credentials (MD5-hashed)
+  - Full contents of the `users` table
 
 ---
 
-## 🔹 Key Lessons Learned
+## ⚠️ Impact
 
-- Escaping input alone is **insufficient** against SQL injection  
-- Numeric input may bypass string-based defenses  
-- Secure design, parameterized queries, and server-side validation are critical to application security  
-
----
-
-## 🔹 Skills Demonstrated
-
-- Web application penetration testing  
-- SQL injection analysis (boolean-based, UNION-based)  
-- Input validation evaluation  
-- Secure coding recommendations  
-- Academic and corporate-style security reporting  
+| Impact | Details |
+|---|---|
+| **Data Exposure** | Full read access to the `users` table |
+| **Account Compromise** | Administrator account credentials extracted |
+| **Password Hashes** | MD5 hashes available for offline cracking |
+| **Auth Bypass** | Client-side controls entirely circumvented |
 
 ---
 
-## ⚖ Ethical Statement
+## 🔒 Remediation
 
-All testing was conducted in a **controlled lab environment** using simulated accounts. No real user data was accessed or compromised. AI assistance (ChatGPT) was used **only for report polishing and structuring**, not for generating findings.
+**Root Cause:** Reliance on input filtering rather than secure query design.
+
+### Vulnerable Code
+```php
+// ❌ Direct concatenation — never do this
+$query = "SELECT first_name, last_name FROM users WHERE user_id = $id";
+```
+
+### Secure Fix
+```php
+// ✅ Parameterized query
+$stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE user_id = ?");
+$stmt->execute([$id]);
+```
+
+### Recommended Best Practices
+- Use **prepared statements** and **parameterized queries** — not input escaping
+- Enforce **strict server-side type validation** on all inputs
+- Never rely on **client-side controls** as a security mechanism
+- Replace **MD5** password hashing with **Argon2id**
+- Apply **principle of least privilege** to database accounts
+
+---
+
+## 📘 Key Lessons
+
+- Input escaping alone is **not sufficient** against SQL injection
+- Numeric inputs can **bypass string-based defenses** entirely
+- Secure design must be built in from the start — it cannot be patched on top
+
+---
+
+## 🧠 Skills Demonstrated
+
+- Web application penetration testing
+- SQL injection — boolean-based and UNION-based techniques
+- HTTP request manipulation and client-side control bypass
+- Input validation evaluation
+- Secure coding recommendations (PHP / PDO)
+- Corporate-style security reporting with CVSS scoring
+
+---
+
+## 📄 Report
+
+The full assessment report is available here:
+
+| File | Description |
+|---|---|
+| [`DVWA_report.pdf`](DVWA_report.pdf) | Complete penetration test report with evidence and findings |
+
+> **Note:** PDF files will download rather than preview directly on GitHub.
+
+---
+
+## ⚖️ Ethical Statement
+
+> All testing was conducted in a **controlled lab environment** using a deliberately vulnerable application (DVWA) with simulated accounts. No real user data was accessed or compromised.
+>
+> This assessment was authorized as part of **AltSchool Africa** internal security training.
+>
+> **Do not replicate these techniques against any system you do not own or have explicit written permission to test.** Unauthorized access is illegal under the CFAA and equivalent legislation worldwide.
